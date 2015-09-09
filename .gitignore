@@ -1,0 +1,27 @@
+# Compiled source #
+###################
+*.pyc
+
+# Logs and databases #
+######################
+*.log
+*.sql
+*.sqlite
+
+# pid and lock files #
+######################
+*.pid
+*.lock
+
+# OS generated files #
+######################
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+Thumbs.db
+
+FirmwareUploader.cfg

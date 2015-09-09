@@ -1,5 +1,5 @@
 # WirelessThings Firmware Uploader
-This Firmware Uploader program is use to update the firmware on any WirelessThings radio device.
+This Firmware Uploader program is used to update the firmware on any WirelessThings radio device.
 
 ## Description
 

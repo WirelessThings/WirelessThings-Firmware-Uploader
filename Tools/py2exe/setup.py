@@ -1,8 +1,8 @@
 from distutils.core import setup
 import py2exe
 
-setup(windows=[{'script': '../../UploaderWizard.py',
-				"icon_resources": [(1, '../../wt.ico')]
+setup(windows=[{'script': '../../FirmwareUploader/FirmwareUploader.py',
+				"icon_resources": [(1, '../../FirmwareUploader/wt.ico')]
 				}],
-      data_files=[('', ['../../wt.ico', '../../UploaderWizard_defaults.cfg'])]
-	  )
+      data_files=[('', ['../../FirmwareUploader/wt.ico', '../../FirmwareUploader/FirmwareUploader_defaults.cfg'])]
+	)

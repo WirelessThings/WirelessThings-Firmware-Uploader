@@ -654,9 +654,9 @@ class FirmwareUploader:
         tk.Label(self.cframe, text="Connecting with device..."
                 ).grid(row=7, column=0, columnspan=self._columns, rowspan=1)
 
-        progBar = ttk.Progressbar(self.cframe, orient='horizontal', mode='indeterminate', length=self._widthMain/2.5)
-        progBar.grid(row=9, column=0, columnspan=self._columns)
-        progBar.start()
+        self.commProgressBar = ttk.Progressbar(self.cframe, orient='horizontal', mode='indeterminate', length=self._widthMain/2.5)
+        self.commProgressBar.grid(row=9, column=0, columnspan=self._columns)
+        self.commProgressBar.start()
         return
 
     def createDevicesList(self):
@@ -1494,6 +1494,7 @@ class FirmwareUploader:
         if self._checkSerialError :
             self.master.after(1000, self._checkSerialGetVersionError)
             if not self.tSerialGetVersion.isAlive():
+                self.commProgressBar.stop()
                 self._checkSerialError = False
                 if not self.qSerialGetVersion.empty() :
                     msg = self.qSerialGetVersion.get()
@@ -1519,12 +1520,12 @@ class FirmwareUploader:
             self._startOver()
             return False
 
-        if self._usbMode :
+        if self._usbMode:
             tkMessageBox.showerror(ERRDEV,USBMODE)
             self._startOver()
             return False
 
-        if self._bootloader4 :
+        if self._bootloader4:
             tkMessageBox.showerror(ERRDEV,BOOTLOADERNOTSUPPORTED)
             self._startOver()
             return False
@@ -1627,7 +1628,7 @@ class FirmwareUploader:
         try :
             self._fwVersion = self.fw.checkFWVersion()
         except :
-            self.qSerialGetVersion.put("Communication Error")
+            self.qSerialGetVersion.put("Error obtaining the FW Version")
             return
 
         if self._fwVersion :
@@ -1640,12 +1641,15 @@ class FirmwareUploader:
 
                 if self._deviceFwName == '':
                     self._oldDevice = True
+                    self.fw.exitATMode()
                     return
                 if "B" not in self._fwVersion :
                     self._oldDevice = True
+                    self.fw.exitATMode()
                     return
                 elif "U" in self._fwVersion :
                     self._usbMode = True
+                    self.fw.exitATMode()
                     return
 
                 self._fwVersion = self._fwVersion.split('B',1)[0] #leaves only the version number on string
@@ -1673,6 +1677,7 @@ class FirmwareUploader:
         else : #in case of response from AT but no fwVersion response, sends comm error
             self.logger.info("tSerialGetVersion: Thread stopping")
             self._commFail = True
+            self.fw.exitATMode() #make sure device quit AT Mode, if fails
             return
 
         self.logger.info("tSerialGetVersion: Thread stopping")

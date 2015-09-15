@@ -567,6 +567,7 @@ class FirmwareUploader:
                     self.deviceFound = True
                     fwVersion = self.at.sendATWaitForResponse("ATVR")
                     self.at.sendATWaitForOK("ATDN")
+                    self.ser.close()
                     if fwVersion:
                         if '0.' in fwVersion:
                             fwVersion = fwVersion.split('0.',1)[1]

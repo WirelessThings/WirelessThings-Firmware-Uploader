@@ -262,7 +262,7 @@ class FirmwareUploader:
                     i += 1
                 except EnvironmentError:
                     # if reachs here, means the key is empty now
-                    return result
+                    return sorted(result)
         elif LINUX:
             # this is to exclude your current terminal "/dev/tty"
             ports = glob.glob('/dev/tty[A-Za-z]*')
@@ -282,7 +282,7 @@ class FirmwareUploader:
                 result.append(port)
             except (OSError, serial.SerialException):
                 pass
-        return result
+        return sorted(result)
 
     def downloadFile(self, type):
         try:

@@ -469,8 +469,7 @@ class FirmwareUploader:
             self.logger.debug("reListSerialPorts: Error listing serial ports")
 
     def searchDeviceSerial(self):
-        if tkMessageBox.askyesno("Uploader Wizard", "This can take quite some time to search all the available COM ports\nAre you sure?",
-                                    parent=self.master):
+        if tkMessageBox.askyesno("Uploader Wizard", "This can take quite some time to search all the available COM ports\nAre you sure?", parent=self.master):
             self.reListSerialPorts()
             self._initLocatingDeviceSerialThread()
 
@@ -526,7 +525,7 @@ class FirmwareUploader:
                     self.searchWindow.destroy()
                 else:
                     self.searchWindow.destroy()
-                    tkMessageBox.showerror("Uploader Wizard", "No Device found")
+                    tkMessageBox.showerror("Uploader Wizard", "No Device found", parent=self.master)
         else:
             self.master.after(1000, self._checkDeviceFound)
 
@@ -912,7 +911,7 @@ class FirmwareUploader:
         else:
             text = "This will change your device to {} firmware.\nAre you sure?".format(sender)
 
-        if tkMessageBox.askyesno("Uploader Wizard",text):
+        if tkMessageBox.askyesno("Uploader Wizard",text, parent=self.master):
             if sender == "Serial":
                 self._setSerialFirmware()
             else:
@@ -1277,7 +1276,7 @@ class FirmwareUploader:
                     self.qSerialUpload.task_done()
                 elif (msg[0] == 'Error') :
                     self._updateDebugText(msg[1])
-                    tkMessageBox.showerror('Error',message=msg[1])
+                    tkMessageBox.showerror('Error',message=msg[1], parent=self.master)
                     self._checkUploadQueue = False
                     self.qSerialUpload.task_done()
                     self.labelUploading.set(ERRUPLOADING)
@@ -1498,7 +1497,7 @@ class FirmwareUploader:
                 self._checkSerialError = False
                 if not self.qSerialGetVersion.empty() :
                     msg = self.qSerialGetVersion.get()
-                    tkMessageBox.showerror(message=msg)
+                    tkMessageBox.showerror(message=msg, parent=self.master)
                     self.logger.error(msg)
                     self.qSerialGetVersion.task_done()
                     self._checkSerialGetVersionQueue = False
@@ -1511,28 +1510,28 @@ class FirmwareUploader:
 
     def _checkSerialInitErrors(self):
         if self._oldDevice :
-            tkMessageBox.showerror(ERRDEV,OLDDEVICE)
+            tkMessageBox.showerror(ERRDEV,OLDDEVICE, parent=self.master)
             self._startOver()
             return False
 
         if self._oldBootloader :
-            tkMessageBox.showerror(ERRDEV,OLDBOOTLOADER)
+            tkMessageBox.showerror(ERRDEV,OLDBOOTLOADER, parent=self.master)
             self._startOver()
             return False
 
         if self._usbMode:
-            tkMessageBox.showerror(ERRDEV,USBMODE)
+            tkMessageBox.showerror(ERRDEV,USBMODE, parent=self.master)
             self._startOver()
             return False
 
         if self._bootloader4:
-            tkMessageBox.showerror(ERRDEV,BOOTLOADERNOTSUPPORTED)
+            tkMessageBox.showerror(ERRDEV,BOOTLOADERNOTSUPPORTED, parent=self.master)
             self._startOver()
             return False
 
         if self._commFail :
             if tkMessageBox.askretrycancel(COMMTIMEOUT,
-                        NODEVREPLY) :
+                        NODEVREPLY, parent=self.master) :
                 self.ser.close()
                 self._setCOMPort()
 
@@ -1542,7 +1541,7 @@ class FirmwareUploader:
 
         if self._inBootloaderMode :
             tkMessageBox.showwarning(BOOTLOADERMODE,
-                        BOOTLOADER)
+                        BOOTLOADER, parent=self.master)
 
         return True
 
@@ -1904,7 +1903,7 @@ class FirmwareUploader:
         request = self.downloadFile('json')
 
         if str(request) != '200' :
-            tkMessageBox.showerror("Error","Error downloading JSON File\nError "+str(request))
+            tkMessageBox.showerror("Error","Error downloading JSON File\nError "+str(request), parent=self.master)
             sys.exit(1)
 
         try:

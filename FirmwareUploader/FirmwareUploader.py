@@ -262,7 +262,7 @@ class FirmwareUploader:
                     i += 1
                 except EnvironmentError:
                     # if reachs here, means the key is empty now
-                    return result
+                    return sorted(result)
         elif LINUX:
             # this is to exclude your current terminal "/dev/tty"
             ports = glob.glob('/dev/tty[A-Za-z]*')
@@ -282,7 +282,7 @@ class FirmwareUploader:
                 result.append(port)
             except (OSError, serial.SerialException):
                 pass
-        return result
+        return sorted(result)
 
     def downloadFile(self, type):
         try:
@@ -469,8 +469,7 @@ class FirmwareUploader:
             self.logger.debug("reListSerialPorts: Error listing serial ports")
 
     def searchDeviceSerial(self):
-        if tkMessageBox.askyesno("Uploader Wizard", "This can take quite some time to search all the available COM ports\nAre you sure?",
-                                    parent=self.master):
+        if tkMessageBox.askyesno("Uploader Wizard", "This can take quite some time to search all the available COM ports\nAre you sure?", parent=self.master):
             self.reListSerialPorts()
             self._initLocatingDeviceSerialThread()
 
@@ -526,7 +525,7 @@ class FirmwareUploader:
                     self.searchWindow.destroy()
                 else:
                     self.searchWindow.destroy()
-                    tkMessageBox.showerror("Uploader Wizard", "No Device found")
+                    tkMessageBox.showerror("Uploader Wizard", "No Device found", parent=self.master)
         else:
             self.master.after(1000, self._checkDeviceFound)
 
@@ -567,6 +566,7 @@ class FirmwareUploader:
                     self.deviceFound = True
                     fwVersion = self.at.sendATWaitForResponse("ATVR")
                     self.at.sendATWaitForOK("ATDN")
+                    self.ser.close()
                     if fwVersion:
                         if '0.' in fwVersion:
                             fwVersion = fwVersion.split('0.',1)[1]
@@ -653,9 +653,9 @@ class FirmwareUploader:
         tk.Label(self.cframe, text="Connecting with device..."
                 ).grid(row=7, column=0, columnspan=self._columns, rowspan=1)
 
-        progBar = ttk.Progressbar(self.cframe, orient='horizontal', mode='indeterminate', length=self._widthMain/2.5)
-        progBar.grid(row=9, column=0, columnspan=self._columns)
-        progBar.start()
+        self.commProgressBar = ttk.Progressbar(self.cframe, orient='horizontal', mode='indeterminate', length=self._widthMain/2.5)
+        self.commProgressBar.grid(row=9, column=0, columnspan=self._columns)
+        self.commProgressBar.start()
         return
 
     def createDevicesList(self):
@@ -911,7 +911,7 @@ class FirmwareUploader:
         else:
             text = "This will change your device to {} firmware.\nAre you sure?".format(sender)
 
-        if tkMessageBox.askyesno("Uploader Wizard",text):
+        if tkMessageBox.askyesno("Uploader Wizard",text, parent=self.master):
             if sender == "Serial":
                 self._setSerialFirmware()
             else:
@@ -1276,7 +1276,7 @@ class FirmwareUploader:
                     self.qSerialUpload.task_done()
                 elif (msg[0] == 'Error') :
                     self._updateDebugText(msg[1])
-                    tkMessageBox.showerror('Error',message=msg[1])
+                    tkMessageBox.showerror('Error',message=msg[1], parent=self.master)
                     self._checkUploadQueue = False
                     self.qSerialUpload.task_done()
                     self.labelUploading.set(ERRUPLOADING)
@@ -1493,10 +1493,11 @@ class FirmwareUploader:
         if self._checkSerialError :
             self.master.after(1000, self._checkSerialGetVersionError)
             if not self.tSerialGetVersion.isAlive():
+                self.commProgressBar.stop()
                 self._checkSerialError = False
                 if not self.qSerialGetVersion.empty() :
                     msg = self.qSerialGetVersion.get()
-                    tkMessageBox.showerror(message=msg)
+                    tkMessageBox.showerror(message=msg, parent=self.master)
                     self.logger.error(msg)
                     self.qSerialGetVersion.task_done()
                     self._checkSerialGetVersionQueue = False
@@ -1509,28 +1510,28 @@ class FirmwareUploader:
 
     def _checkSerialInitErrors(self):
         if self._oldDevice :
-            tkMessageBox.showerror(ERRDEV,OLDDEVICE)
+            tkMessageBox.showerror(ERRDEV,OLDDEVICE, parent=self.master)
             self._startOver()
             return False
 
         if self._oldBootloader :
-            tkMessageBox.showerror(ERRDEV,OLDBOOTLOADER)
+            tkMessageBox.showerror(ERRDEV,OLDBOOTLOADER, parent=self.master)
             self._startOver()
             return False
 
-        if self._usbMode :
-            tkMessageBox.showerror(ERRDEV,USBMODE)
+        if self._usbMode:
+            tkMessageBox.showerror(ERRDEV,USBMODE, parent=self.master)
             self._startOver()
             return False
 
-        if self._bootloader4 :
-            tkMessageBox.showerror(ERRDEV,BOOTLOADERNOTSUPPORTED)
+        if self._bootloader4:
+            tkMessageBox.showerror(ERRDEV,BOOTLOADERNOTSUPPORTED, parent=self.master)
             self._startOver()
             return False
 
         if self._commFail :
             if tkMessageBox.askretrycancel(COMMTIMEOUT,
-                        NODEVREPLY) :
+                        NODEVREPLY, parent=self.master) :
                 self.ser.close()
                 self._setCOMPort()
 
@@ -1540,7 +1541,7 @@ class FirmwareUploader:
 
         if self._inBootloaderMode :
             tkMessageBox.showwarning(BOOTLOADERMODE,
-                        BOOTLOADER)
+                        BOOTLOADER, parent=self.master)
 
         return True
 
@@ -1626,7 +1627,7 @@ class FirmwareUploader:
         try :
             self._fwVersion = self.fw.checkFWVersion()
         except :
-            self.qSerialGetVersion.put("Communication Error")
+            self.qSerialGetVersion.put("Error obtaining the FW Version")
             return
 
         if self._fwVersion :
@@ -1639,12 +1640,15 @@ class FirmwareUploader:
 
                 if self._deviceFwName == '':
                     self._oldDevice = True
+                    self.fw.exitATMode()
                     return
                 if "B" not in self._fwVersion :
                     self._oldDevice = True
+                    self.fw.exitATMode()
                     return
                 elif "U" in self._fwVersion :
                     self._usbMode = True
+                    self.fw.exitATMode()
                     return
 
                 self._fwVersion = self._fwVersion.split('B',1)[0] #leaves only the version number on string
@@ -1672,6 +1676,7 @@ class FirmwareUploader:
         else : #in case of response from AT but no fwVersion response, sends comm error
             self.logger.info("tSerialGetVersion: Thread stopping")
             self._commFail = True
+            self.fw.exitATMode() #make sure device quit AT Mode, if fails
             return
 
         self.logger.info("tSerialGetVersion: Thread stopping")
@@ -1898,7 +1903,7 @@ class FirmwareUploader:
         request = self.downloadFile('json')
 
         if str(request) != '200' :
-            tkMessageBox.showerror("Error","Error downloading JSON File\nError "+str(request))
+            tkMessageBox.showerror("Error","Error downloading JSON File\nError "+str(request), parent=self.master)
             sys.exit(1)
 
         try:

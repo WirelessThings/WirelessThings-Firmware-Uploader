@@ -139,22 +139,32 @@ class AT():
         """
         self.logger.debug("AT: Wait for OK")
         starttime = time()
-        buffer = ""
-        char = ""
-        while (time() - starttime) < timeout and char != "\r":
-            char = self._serial.read()
-            #self.logger.debug("AT: RX:{}".format(char))
-            buffer += char
-
-        if "OK\r" in buffer:
-            self.logger.debug("AT: Got OK")
-            return True
-        elif "ERR\r" in buffer:
-            self.logger.debug("AT: Got ERR")
-            return False
-        else:
+        if not self._inATMode:
+            while (time() - starttime) < timeout:
+                if self._serial.read() == 'O':
+                    if self._serial.read() == 'K':
+                        if self._serial.read() == '\r':
+                            self.logger.debug("AT: Got OK")
+                            return True
             self.logger.debug("AT: OK timed out")
             return False
+        else:
+            buf = ""
+            char = ""
+            while (time() - starttime) < timeout and char != "\r":
+                char = self._serial.read()
+                #self.logger.debug("AT: RX:{}".format(char))
+                buf += char
+
+            if "OK\r" in buf:
+                self.logger.debug("AT: Got OK")
+                return True
+            elif "ERR\r" in buf:
+                self.logger.debug("AT: Got ERR")
+                return False
+            else:
+                self.logger.debug("AT: OK timed out")
+                return False
 
     def sendATWaitForResponse(self, command, timeout=1.5, retries=3):
         """ Send an AT command and wait for response followed by an "OK\r"
@@ -181,28 +191,28 @@ class AT():
 
         self.logger.debug("AT: Wait for Response")
         starttime = time()
-        buffer = ""
+        buf = ""
         char = ""
         while (time() - starttime) < timeout:
             char = self._serial.read()
             if char == '\r':
                 break
             # self.logger.debug("AT: RX:{}".format(char))
-            buffer += char
+            buf += char
 
         ### receive the first line, if there's no info (or ERR), return False
-        if buffer == "":
+        if buf == "":
             self.logger.debug("AT: OK timed out")
             return False
-        elif buffer == "OK":
+        elif buf == "OK":
             return False
-        elif buffer == "ERR":
+        elif buf == "ERR":
             self.logger.debug("AT: Got ERR")
             return False
 
         #receive the second line (expecting 'OK\r') to make sure that the data received is valid
         if self.waitForOK():
-            return buffer
+            return buf
 
         return False
 

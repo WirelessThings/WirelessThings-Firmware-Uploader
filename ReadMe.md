@@ -9,6 +9,7 @@ The Firmware Uploader can be run on any system with the following requirements
 * Python 2.7
 * pySerial
 * WirelessThings radio with bootloader version 3
+* The uploader will find and download the appropriate firmware file - you do not need to download it.
 
 ## Invoking
 Starting the Firmware Uploader can be done though several means as detailed below

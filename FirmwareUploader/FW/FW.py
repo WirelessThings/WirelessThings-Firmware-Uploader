@@ -31,9 +31,7 @@ class FW():
     _device = "COM3"
     _timeout = 1.5 #timeout for receiving bytes functions
 
-    def __init__(self, atHandle=None, serialHandle=None, logger=None, event=None):
-        self._serial = serialHandle or serial.Serial()
-        self._at = atHandle or AT.AT()
+    def __init__(self, atHandle=None, serialHandle=None, logger=None, gpioPin=None, event=None):
         if logger == None:
             logging.basicConfig(level=logging.DEBUG)
             self.logger = logging.getLogger()
@@ -41,6 +39,12 @@ class FW():
             self.logger = logger
 
         self.event = event
+
+        self._serial = serialHandle or self.startSerial(self._device, 9600, self._timeout)
+        if not self._serial:
+            sys.exit(1)
+
+        self._at = atHandle or AT.AT(self._serial, self.logger, gpioPin, self.event)
 
     def startSerial(self, port, baudrate, timeout) :
         """
@@ -134,7 +138,6 @@ class FW():
         else :
             return False
 
-    #def waitResponse(self, response) :
     def waitResponse(self, response) :
         """
         Waits on the serial for the response
@@ -148,14 +151,13 @@ class FW():
             return False
 
     def sendFirmware(self, fwFile, debug=True) :
-    ############ send the bin file  ############
         """
         Sends the firmware file stored before to
         the device line by line, then returns the
         total number of lines are sent (or false if fails)
         """
         currentLine = 0
-        sleep(1.5)
+        self._at._sleep(1.5)
         fwLength = len(fwFile)
         i = 10
 
@@ -191,7 +193,7 @@ class FW():
                         self.logger.debug ("FW: Restarting device...")
                         self._at.endSerial()
                         #TODO reset and try again (not tested yet)
-                        sys.exit(-1)
+                        sys.exit(1)
                     else :    #if doesn't receive any acceptable answer, exits the program
                         break
                         #return currentLine

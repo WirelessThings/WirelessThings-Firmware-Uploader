@@ -28,7 +28,7 @@ class AT():
 
     _inATMode = False
 
-    def __init__(self, serialHandle=None, logger=None, event=None):
+    def __init__(self, serialHandle=None, logger=None, gpioPin=None, event=None):
         self._serial = serialHandle or serial.Serial()
         if logger == None:
             logging.basicConfig(level=logging.DEBUG)
@@ -37,6 +37,22 @@ class AT():
             self.logger = logger
 
         self.event = event
+
+        self.gpioPin = gpioPin
+
+        if self.gpioPin:
+            try:
+                global GPIO
+                import RPi.GPIO as GPIO
+                GPIO.setmode(GPIO.BCM)
+                GPIO.setup(self.gpioPin, GPIO.OUT)
+                GPIO.output(self.gpioPin, GPIO.HIGH)
+            except ImportError:
+                self.logger.warn("AT: Error importing RPi.GPIO. '+++' will be used instead of GPIO")
+                self.gpioPin = None
+            except:
+                self.logger.warn("AT: Error setting GPIO. '+++' will be used instead of GPIO")
+                self.gpioPin = None
 
     def __del__(self):
         pass
@@ -72,12 +88,22 @@ class AT():
         self.logger.debug("AT: Close Serial port")
 
     def enterATMode(self, retries=2):
+        global GPIO
         """ Enter AT command mode
             To enter AT mode we wait 1 seconds send +++
             wait 1 second
             we should get back an "OK\r"
+            or
+            we set the gpio pin specified on .cfg file or by arg
         """
+
         self.logger.debug("AT: Enter Command Mode")
+        if self.gpioPin:
+            GPIO.output(self.gpioPin, GPIO.LOW)
+            self.logger.debug("AT: Entered AT Mode via GPIO")
+            self._inATMode = True
+            return True
+
         for r in range(retries):
             self._serial.flushInput()
 
@@ -92,9 +118,19 @@ class AT():
             if self.waitForOK(1.5):
                 self._inATMode = True
                 return True
+            else:
+                self.logger.debug("AT: Send 'AT'")
+                self._serial.write("AT\r")
+                if self.waitForOK(0.5):
+                    self.logger.debug("AT: Entered AT Mode")
+                    self._inATMode = True
+                    return True
+        #if reaches here, not in AT mode
+        self._inATMode = False
         return False
 
     def leaveATMode(self):
+        global GPIO
         """ Leave AT commnand Mode
             there are two ways to leave AT Mode
             send "ATDN"
@@ -102,7 +138,10 @@ class AT():
         """
         self.logger.debug("AT: Leave Command Mode")
         if self._inATMode:
-            self.sendATWaitForOK("ATDN", 5)
+            if self.gpioPin:
+                GPIO.cleanup()
+            else:
+                self.sendATWaitForOK("ATDN", 5)
         return True
 
     def sendAT(self, command):
@@ -139,32 +178,22 @@ class AT():
         """
         self.logger.debug("AT: Wait for OK")
         starttime = time()
-        if not self._inATMode:
-            while (time() - starttime) < timeout:
-                if self._serial.read() == 'O':
-                    if self._serial.read() == 'K':
-                        if self._serial.read() == '\r':
-                            self.logger.debug("AT: Got OK")
-                            return True
-            self.logger.debug("AT: OK timed out")
+        buffer = ""
+        char = ""
+        while (time() - starttime) < timeout and char != "\r":
+            char = self._serial.read()
+            #self.logger.debug("AT: RX:{}".format(char))
+            buffer += char
+
+        if "OK\r" in buffer:
+            self.logger.debug("AT: Got OK")
+            return True
+        elif "ERR\r" in buffer:
+            self.logger.debug("AT: Got ERR")
             return False
         else:
-            buf = ""
-            char = ""
-            while (time() - starttime) < timeout and char != "\r":
-                char = self._serial.read()
-                #self.logger.debug("AT: RX:{}".format(char))
-                buf += char
-
-            if "OK\r" in buf:
-                self.logger.debug("AT: Got OK")
-                return True
-            elif "ERR\r" in buf:
-                self.logger.debug("AT: Got ERR")
-                return False
-            else:
-                self.logger.debug("AT: OK timed out")
-                return False
+            self.logger.debug("AT: OK timed out")
+            return False
 
     def sendATWaitForResponse(self, command, timeout=1.5, retries=3):
         """ Send an AT command and wait for response followed by an "OK\r"
@@ -191,28 +220,28 @@ class AT():
 
         self.logger.debug("AT: Wait for Response")
         starttime = time()
-        buf = ""
+        buffer = ""
         char = ""
         while (time() - starttime) < timeout:
             char = self._serial.read()
             if char == '\r':
                 break
             # self.logger.debug("AT: RX:{}".format(char))
-            buf += char
+            buffer += char
 
         ### receive the first line, if there's no info (or ERR), return False
-        if buf == "":
+        if buffer == "":
             self.logger.debug("AT: OK timed out")
             return False
-        elif buf == "OK":
+        elif buffer == "OK":
             return False
-        elif buf == "ERR":
+        elif buffer == "ERR":
             self.logger.debug("AT: Got ERR")
             return False
 
         #receive the second line (expecting 'OK\r') to make sure that the data received is valid
         if self.waitForOK():
-            return buf
+            return buffer
 
         return False
 

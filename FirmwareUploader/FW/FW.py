@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 """ FW Class
 
@@ -21,15 +22,13 @@
 
 import serial
 import sys
-import time
+from time import time, sleep
 import AT
 import logging
 
 class FW():
 
-    _line_number = 0
-    _device_filename = "COM3"
-    _baud_rate = 9600
+    _device = "COM3"
     _timeout = 1.5 #timeout for receiving bytes functions
 
     def __init__(self, atHandle=None, serialHandle=None, logger=None, event=None):
@@ -51,12 +50,12 @@ class FW():
         try :
             ser = serial.Serial(port, baudrate, timeout=timeout)
         except serial.SerialException as e:
-            self.logger.error ("Failed to open port {}: {}".format(self._device_filename,e.strerror))
-            sys.exit(2)
+            self.logger.error ("Failed to open port {}: {}".format(self._device,e.strerror))
+            return False
 
         return ser
 
-    def error(self, message, code) :
+    def error(self, message, code=1) :
         """
             Sends an error message, close the serial and
             exits the program
@@ -68,7 +67,7 @@ class FW():
     def sendStrWaitingResponse(self, send, response, retries=3) :
         """
             Sends an string through the serial port and
-            waits for an specified time to their response
+            waits for their response
         """
         retry = 0
         received = False
@@ -77,11 +76,11 @@ class FW():
             self._serial.write(send)
             received = self._serial.read()
             retry += 1
-            if received:
-                if received in response:
-                    return received
-        #in case of error, return False
-        return False
+
+            if received in response:
+                break
+                #return received
+        return received
 
     def checkFWVersion(self, tout=_timeout):
         """
@@ -141,62 +140,67 @@ class FW():
         Waits on the serial for the response
         until timeout or response received
         """
-        data = ""
+        data = None
         data = self._serial.read()
         if data == response :
             return True
         else :
             return False
 
-    def sendFirmware(self, fw) :
+    def sendFirmware(self, fwFile, debug=True) :
     ############ send the bin file  ############
         """
         Sends the firmware file stored before to
         the device line by line, then returns the
         total number of lines are sent (or false if fails)
         """
-        self._line_number = 0
-        time.sleep(1.5)
-        len_fw = len(fw)
+        currentLine = 0
+        sleep(1.5)
+        fwLength = len(fwFile)
         i = 10
-        for file_line in fw :
-            data = ""
+
+        for fwLine in fwFile :
+            data = None
             data = self._serial.read()
-            if data == "":
+            if data == None:
                 self.logger.debug ("FW: returned blank expecting R")
-                return self._line_number
+                #return currentLine
+                break
             elif data != "R" :
                 self.logger.debug ("FW: sendFirmware data = {}".format(ord(data)))
-                return self._line_number
+                #return currentLine
+                break
 
-            self._line_number += 1
-            self._serial.write(file_line) #send the line
-            data = ""
+            currentLine += 1
+            self._serial.write(fwLine) #send the line
+            data = None
             data = self._serial.read()
             # TODO: try to improve this part, be more readable
-            if data == "":
+            if data == None:
                 self.logger.debug ("FW: returned blank expecting A")
-                return self._line_number
+                #return currentLine
+                break
             elif data != "A" :
                 if data == "N" : # retry once
-                    self._serial.write(file_line)
-                    data = ""
+                    self._serial.write(fwLine)
+                    data = None
                     data = self._serial.read()
                     if data == "A" :
-                        data = ""
                         continue
                     elif data in ["n","N"] :    #if still not working, restarts the device
-                        sel.logger.debug ("Restarting device...")
+                        self.logger.debug ("FW: Restarting device...")
                         self._at.endSerial()
-                        #TODO reset and try again
+                        #TODO reset and try again (not tested yet)
                         sys.exit(-1)
                     else :    #if doesn't receive any acceptable answer, exits the program
-                        return self._line_number
-            if (self._line_number >= ((len_fw*i)/100)) :
+                        break
+                        #return currentLine
+
+            if (currentLine >= ((fwLength*i)/100)) and debug :
                 self.logger.debug ("FW: {}% Completed".format(i))    # debug
                 i += 10
 
-        return self._line_number
+        return currentLine
 
     def restartSerial(self, port, baudrate, timeout) :
         """
@@ -208,7 +212,8 @@ class FW():
             self._serial = self.startSerial(port,baudrate,timeout=timeout)
         except serial.SerialException as e:
             self.logger.error ("FW: Failed to open port {}: {}".format(port,e.strerror))
-            sys.exit(2)
+            #sys.exit(2)
+            return False
 
         return self._serial
 
@@ -223,23 +228,25 @@ class FW():
         except :
             return False
 
-    def prepareFirmwareFile(self, fw_filename) :
+    def prepareFirmwareFile(self, fwFileName) :
         """
             Store the content of the FW File (.bin file)
             to be written on the device
         """
 
         try :
-            f = open(fw_filename, "r")
+            f = open(fwFileName, "r")
         except IOError as e:
-            self.logger.critical("Could not open firmware file {} for reading: {}\n".format(fw_filename,e.strerror))
-            sys.exit(2)
+            self.logger.error("FW: Could not open firmware file {} for reading: {}\n".format(fwFileName,e.strerror))
+            #sys.exit(2)
+            return False
         firmware = [line.rstrip() for line in f] #rstrip() removes the whitespaces \f , \n , \r , \t , \v , \x and blank on the end of the line
         line = ""
         for line in firmware:
             if len(line) != 67 :
-                self.logger.critical("Line with invalid length of {} in firmware file\n".format(len(line)))
-                sys.exit(2)
+                self.logger.error("FW: Line with invalid length of {} in firmware file\n".format(len(line)))
+                #sys.exit(2)
+                return False
         f.close()
         return firmware
 

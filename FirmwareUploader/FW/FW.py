@@ -83,7 +83,7 @@ class FW():
 
             if received in response:
                 break
-                #return received
+                
         return received
 
     def checkFWVersion(self, tout=_timeout):
@@ -166,11 +166,9 @@ class FW():
             data = self._serial.read()
             if data == None:
                 self.logger.debug ("FW: returned blank expecting R")
-                #return currentLine
                 break
             elif data != "R" :
                 self.logger.debug ("FW: sendFirmware data = {}".format(ord(data)))
-                #return currentLine
                 break
 
             currentLine += 1
@@ -180,7 +178,6 @@ class FW():
             # TODO: try to improve this part, be more readable
             if data == None:
                 self.logger.debug ("FW: returned blank expecting A")
-                #return currentLine
                 break
             elif data != "A" :
                 if data == "N" : # retry once
@@ -196,7 +193,6 @@ class FW():
                         sys.exit(1)
                     else :    #if doesn't receive any acceptable answer, exits the program
                         break
-                        #return currentLine
 
             if (currentLine >= ((fwLength*i)/100)) and debug :
                 self.logger.debug ("FW: {}% Completed".format(i))    # debug
@@ -214,7 +210,6 @@ class FW():
             self._serial = self.startSerial(port,baudrate,timeout=timeout)
         except serial.SerialException as e:
             self.logger.error ("FW: Failed to open port {}: {}".format(port,e.strerror))
-            #sys.exit(2)
             return False
 
         return self._serial
@@ -240,14 +235,12 @@ class FW():
             f = open(fwFileName, "r")
         except IOError as e:
             self.logger.error("FW: Could not open firmware file {} for reading: {}\n".format(fwFileName,e.strerror))
-            #sys.exit(2)
             return False
         firmware = [line.rstrip() for line in f] #rstrip() removes the whitespaces \f , \n , \r , \t , \v , \x and blank on the end of the line
         line = ""
         for line in firmware:
             if len(line) != 67 :
                 self.logger.error("FW: Line with invalid length of {} in firmware file\n".format(len(line)))
-                #sys.exit(2)
                 return False
         f.close()
         return firmware

@@ -1861,7 +1861,7 @@ class FirmwareUploader:
         self.logger.debug("Parse Args")
         parser = argparse.ArgumentParser(description='Update Wizard')
         parser.add_argument('-d', '--debug',
-                            help='Enable debug output to console, overrides LAPCM.cfg setting',
+                            help='Enable debug output to console, overrides FirmwareUploader.cfg setting',
                             action='store_true')
         parser.add_argument('-l', '--log',
                             help='Override the debug logging level, DEBUG, INFO, WARNING, ERROR, CRITICAL'

@@ -1105,11 +1105,14 @@ class FirmwareUploader:
             index = 0
 
             ods['Versions'] = sorted(ods['Versions'], key=lambda t: t, reverse=True)
+            self._verlist = [] #ods['Versions']
             for version in ods['Versions'] :
+                fullVersion = version
                 if '0.' in version :
                     version = version.split('.',1)[1]
 
                 if (version != self._fwVersion) :
+                    self._verlist.insert(index,fullVersion)
                     self._listboxOlderVer.insert(index, version)
                     index += 1
 
@@ -1790,10 +1793,12 @@ class FirmwareUploader:
 
     def _onOlderVersionSelect(self, evt) :
         w = evt.widget
-        self._lastFwVersion = self.showVersion = w.get(w.curselection())
-        if '0.' not in self.showVersion :
-            self._lastFwVersion = '0.'+self._lastFwVersion
-
+        items = w.curselection()
+        self._lastFwVersion = [self._verlist[int(item)] for item in items]
+        #self._lastFwVersion = self.showVersion = w.get(w.curselection())
+        #if '0.' not in self.showVersion :
+        #    self._lastFwVersion = '0.'+self._lastFwVersion
+        self.logger.debug ("Selected version: {}".format(self._lastFwVersion))
         if self._lastFwVersion :
             self.olderVersionNextButton.config(state=tk.ACTIVE) #enables the next button after selection
 

@@ -1794,7 +1794,7 @@ class FirmwareUploader:
     def _onOlderVersionSelect(self, evt) :
         w = evt.widget
         items = w.curselection()
-        self._lastFwVersion = [self._verlist[int(item)] for item in items]
+        self._lastFwVersion = [self._verlist[int(item)] for item in items][0]
         #self._lastFwVersion = self.showVersion = w.get(w.curselection())
         #if '0.' not in self.showVersion :
         #    self._lastFwVersion = '0.'+self._lastFwVersion
